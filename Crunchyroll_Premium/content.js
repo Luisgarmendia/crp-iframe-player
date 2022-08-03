@@ -3,7 +3,7 @@ var preservedState = null
 
 //function que pega algo dentro dentro do html.
 function pegaString(str, first_character, last_character) {
-  if(str.match(first_character + "(.*)" + last_character) == null){
+  if (str.match(first_character + "(.*)" + last_character) == null) {
     return null;
   } else {
     new_str = str.match(first_character + "(.*)" + last_character)[1].trim()
@@ -12,7 +12,7 @@ function pegaString(str, first_character, last_character) {
 }
 
 //function para remover elementos da página
-function remove(element, name, untilRemoved = false, callback = () => {}) {
+function remove(element, name, untilRemoved = false, callback = () => { }) {
   let tries = 0;
   if (untilRemoved) {
     const finishRemove = setInterval(() => {
@@ -22,7 +22,7 @@ function remove(element, name, untilRemoved = false, callback = () => {}) {
         const closeBtn = query(element + ' > .close-button')
         if (closeBtn) closeBtn.click()
         else query(element).style.display = 'none';
-        
+
         callback()
       }
       else if (tries > 250) clearInterval(finishRemove)
@@ -35,127 +35,141 @@ function remove(element, name, untilRemoved = false, callback = () => {}) {
 }
 
 //function que mudar o player para um mais simples.
-function importPlayer(){
-    var HTML = document.documentElement.innerHTML;
-    console.log("[CR Old] Removendo player da Crunchyroll...");
-    var elem = document.getElementById('showmedia_video_player');
-    elem.parentNode.removeChild(elem);
+function importPlayer() {
+  var HTML = document.documentElement.innerHTML;
+  console.log("[CR Old] Removendo player da Crunchyroll...");
+  var elem = document.getElementById('showmedia_video_player');
+  elem.parentNode.removeChild(elem);
 
-    console.log("[CR Old] Pegando dados da stream...");
-    var video_config_media = JSON.parse(pegaString(HTML, "vilos.config.media = ", ";"));
+  console.log("[CR Old] Pegando dados da stream...");
+  var video_config_media = JSON.parse(pegaString(HTML, "vilos.config.media = ", ";"));
 
-    //Remove Nota do topo sobre experimentar o premium
-    //Remove avisos q o video nn pode ser visto
-    //Remove sugestão de inscrever-se para o trial gratuito
-    remove(".freetrial-note", "Free Trial Note")
-    remove(".showmedia-trailer-notice", "Trailer Notice")
-    remove("#showmedia_free_trial_signup", "Free Trial Signup")
+  //Remove Nota do topo sobre experimentar o premium
+  //Remove avisos q o video nn pode ser visto
+  //Remove sugestão de inscrever-se para o trial gratuito
+  remove(".freetrial-note", "Free Trial Note")
+  remove(".showmedia-trailer-notice", "Trailer Notice")
+  remove("#showmedia_free_trial_signup", "Free Trial Signup")
 
-    // Simular interação do usuário para deixar em fullscreen automaticamente
-    var element = document.getElementById("template_scroller");
-    if (element) element.click();
-    
-    const appendTo = query("#showmedia_video_box") || query("#showmedia_video_box_wide")
-    const series = document.querySelector('meta[property="og:title"]');
-    const up_next = document.querySelector('link[rel=next]');
+  // Simular interação do usuário para deixar em fullscreen automaticamente
+  // var element = document.getElementById("template_scroller");
+  // if (element) element.click();
 
-    var message = {
-      'video_config_media': [JSON.stringify(video_config_media)],
-      'lang': [pegaString(HTML, 'LOCALE = "', '",')],
-      'series': series ? series.content : undefined,
-      'up_next': up_next ? up_next.href : undefined,
-    }
+  const appendTo = query("#showmedia_video_box") || query("#showmedia_video_box_wide")
+  const series = document.querySelector('meta[property="og:title"]');
+  const up_next = document.querySelector('link[rel=next]');
 
-    console.log("[CR Old] Adicionando o jwplayer...");
-    addPlayer(appendTo, message)
+  var message = {
+    'video_config_media': [JSON.stringify(video_config_media)],
+    'lang': [pegaString(HTML, 'LOCALE = "', '",')],
+    'series': series ? series.content : undefined,
+    'up_next': up_next ? up_next.href : undefined,
+  }
+
+  console.log("[CR Old] Adicionando o jwplayer...");
+  addPlayer(appendTo, message)
 }
 
 //renderiza player na versão beta
 function importBetaPlayer(ready = false) {
-    var videoPlayer = query('.video-player');
-    if (!ready) {
-      setTimeout(() => importBetaPlayer(!!videoPlayer), 100); 
-      return;
-    }
+  var videoPlayer = query('.video-player') || query('#frame');
+  if (!ready) {
+    setTimeout(() => importBetaPlayer(!!videoPlayer), 100);
+    return;
+  }
+  var lastWatchedPlayer = query('#frame');
+  if (query('.video-player') && lastWatchedPlayer)
+    lastWatchedPlayer.parentNode.removeChild(lastWatchedPlayer);
 
-    console.log("[CR Beta] Removendo player da Crunchyroll...");
-    remove('.video-player-placeholder', 'Video Placeholder')
-    const appendTo = videoPlayer.parentNode;
-    appendTo.removeChild(videoPlayer);
+  console.log("[CR Beta] Removendo player da Crunchyroll...");
+  remove('.video-player-placeholder', 'Video Placeholder');
+  remove('.video-player', 'Video Player', true);
+  remove('.blocked-stream-overlay', 'Blocked Overlay', true);
+  videoPlayer.src = '';
+  const appendTo = videoPlayer.parentNode;
 
-    console.log("[CR Beta] Pegando dados da stream...");
-    var external_lang = preservedState.localization.locale.toLowerCase()
-    var ep_lang = preservedState.localization.locale.replace('-', '')
-    var ep_id = preservedState.watch.id
-    var ep = preservedState.content.byId[ep_id]
-    if (!ep) {window.location.reload(); return;}
-    var series_slug = ep.episode_metadata.series_slug_title
-    var external_id = ep.external_id.substr(4)
-    var old_url = `https://www.crunchyroll.com/${external_lang}/${series_slug}/episode-${external_id}`
-    var up_next = document.querySelector('a.up-next-title')
-    var playback = ep.playback
+  console.log("[CR Beta] Pegando dados da stream...");
+  var external_lang = preservedState.localization.locale.toLowerCase()
+  var ep_lang = preservedState.localization.locale.replace('-', '')
+  var ep_id = preservedState.watch.id
+  var ep = preservedState.content.byId[ep_id]
+  if (!ep) { window.location.reload(); return; }
+  var series_slug = ep.episode_metadata.series_slug_title
+  var external_id = ep.external_id.substr(4)
+  var old_url = `https://www.crunchyroll.com/${external_lang}/${series_slug}/episode-${external_id}`
+  var up_next = document.querySelector('[data-t="next-episode"] > a')
+  var playback = ep.playback
+  var series = document.querySelector('.show-title-link > h4')?.innerText;
 
-    var message = {
-      'playback': playback,
-      'old_url': old_url,
-      'lang': ep_lang,
-      'up_next': up_next ? up_next.href : undefined,
-    }
+  var message = {
+    'playback': playback,
+    'old_url': old_url,
+    'lang': ep_lang,
+    'up_next': up_next ? up_next.href : undefined,
+    'series': series ? series : undefined,
+  }
 
-    console.log("[CR Beta] Adicionando o jwplayer...");
-    console.log("[CR Beta] Antiga URL:", old_url);
-    addPlayer(appendTo, message, true)
+  console.log("[CR Beta] Adicionando o jwplayer...");
+  console.log("[CR Beta] Antiga URL:", old_url);
+  addPlayer(appendTo, message, true)
 }
 
 function addPlayer(element, playerInfo, beta = false) {
-    console.log("[CR Premium] Adicionando o jwplayer...");
-    var ifrm = document.createElement("iframe");
-    ifrm.setAttribute("id", "frame"); 
-    ifrm.setAttribute("src", "https://mateus7g.github.io/crp-iframe-player/"); 
-    ifrm.setAttribute("width","100%");
-    ifrm.setAttribute("height","100%");
-    ifrm.setAttribute("frameborder","0");
-    ifrm.setAttribute("scrolling","no");
-    ifrm.setAttribute("allowfullscreen","allowfullscreen");
-    ifrm.setAttribute("allow","autoplay; encrypted-media *");
-    
-    element.appendChild(ifrm)
+  console.log("[CR Premium] Adicionando o jwplayer...");
+  var ifrm = document.createElement("iframe");
+  ifrm.setAttribute("id", "frame");
+  ifrm.setAttribute("src", "https://mateus7g.github.io/crp-iframe-player/");
+  ifrm.setAttribute("width", "100%");
+  ifrm.setAttribute("height", "100%");
+  ifrm.setAttribute("frameborder", "0");
+  ifrm.setAttribute("scrolling", "no");
+  ifrm.setAttribute("allowfullscreen", "allowfullscreen");
+  ifrm.setAttribute("allow", "autoplay; encrypted-media *");
 
-    chrome.storage.sync.get(['aseguir', 'cooldown'], function(items) {
-      ifrm.onload = function() {
-        playerInfo['up_next_cooldown'] = items.cooldown === undefined ? 5 : items.cooldown;
-        playerInfo['up_next_enable'] = items.aseguir === undefined ? true : items.aseguir;
-        playerInfo['version'] = '1.1.0';
-        playerInfo['noproxy'] = true;
-        playerInfo['beta'] = beta;
-        ifrm.contentWindow.postMessage(playerInfo, "*");
-      };
-    });
+  element.appendChild(ifrm)
+
+  chrome.storage.sync.get(['forcemp4', 'aseguir', 'cooldown', 'webvideocaster'], function (items) {
+    ifrm.onload = function () {
+      playerInfo['webvideocaster'] = items.webvideocaster === undefined ? false : items.webvideocaster;
+      playerInfo['up_next_cooldown'] = items.cooldown === undefined ? 5 : items.cooldown;
+      playerInfo['up_next_enable'] = items.aseguir === undefined ? true : items.aseguir;
+      playerInfo['force_mp4'] = items.forcemp4 === undefined ? false : items.forcemp4;
+      playerInfo['version'] = '1.2.2';
+      playerInfo['noproxy'] = true;
+      playerInfo['beta'] = beta;
+      ifrm.contentWindow.postMessage(playerInfo, "*");
+    };
+  });
 }
 
 //function ao carregar pagina.
 function onloadfunction() {
   var HTML = document.documentElement.innerHTML;
-  if(pegaString(HTML, "vilos.config.media = ", ";") != null){
+  if (pegaString(HTML, "vilos.config.media = ", ";") != null) {
     importPlayer(); // old CR
-  } else if (preservedState != null){
+  } else if (preservedState != null) {
     importBetaPlayer(); // beta CR
     remove(".erc-modal-portal > .overlay > .content-wrapper", "Free Trial Modal", true, () => document.body.classList = [])
+    remove(".erc-watch-premium-upsell", "Premium Sidebar", true)
     registerChangeEpisode();
   }
 }
 
 // function pra atualizar pagina quando mudar de episodio pela UI beta
-var isLoaded = false
+var currentURL = window.location.href;
 
 function registerChangeEpisode() {
-  const epChanged = setInterval(() => {
-    const videosWrapper = query('.videos-wrapper')
-    if (isLoaded && !videosWrapper) {
-      window.location.reload();
-      clearInterval(epChanged);
+  setInterval(async () => {
+    if (currentURL !== window.location.href) {
+      currentURL = window.location.href
+      if (currentURL.includes("/watch/")) {
+        remove(".erc-watch-premium-upsell", "New Premium Sidebar", true)
+        const HTML = await fetch(currentURL)
+        console.log("[CR Beta] Searching for new INITIAL_STATE")
+        preservedState = JSON.parse(pegaString(HTML, "__INITIAL_STATE__ = ", ";"))
+        importBetaPlayer(false)
+      }
     }
-    isLoaded = !!videosWrapper
   }, 50)
 }
 
@@ -163,11 +177,11 @@ document.addEventListener("DOMContentLoaded", onloadfunction, false);
 document.onreadystatechange = function () {
   if (document.readyState === "interactive") {
     console.log("[CR Beta] Searching for INITIAL_STATE")
-    var HTML = document.documentElement.innerHTML
+    const HTML = document.documentElement.innerHTML
     preservedState = JSON.parse(pegaString(HTML, "__INITIAL_STATE__ = ", ";"))
   }
 
-  var crBetaStyle = document.createElement('style');
+  const crBetaStyle = document.createElement('style');
   crBetaStyle.innerHTML = `.video-player-wrapper {
     margin-top: 2rem;
     margin-bottom: calc(-3vh - 7vw);
@@ -176,3 +190,22 @@ document.onreadystatechange = function () {
   }`;
   document.head.appendChild(crBetaStyle);
 }
+
+function fetch(url) {
+  return new Promise(async (resolve, reject) => {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.withCredentials = true;
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState == 4)
+        if (xhr.status == 200) resolve(xhr.responseText)
+        else reject(xhr.statusText)
+    }
+    xhr.send();
+  })
+}
+
+var s = document.createElement('script');
+s.src = chrome.runtime.getURL('blockevidon.js');
+s.onload = function () { this.remove(); };
+(document.head || document.documentElement).appendChild(s);
